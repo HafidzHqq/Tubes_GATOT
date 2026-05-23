@@ -1,0 +1,13 @@
+{
+  "name": "Range Keeper Greedy",
+  "version": "6.0",
+  "authors": ["Hafidz", "Pray", "Rofik"],
+  "description": "A bot that minimizes danger and fires when an enemy is detected.",
+  "homepage": "",
+  "countryCodes": [
+    "id",
+    "dk"
+  ],
+  "platform": ".Net 6.0",
+  "programmingLang": "C# 10.0"
+}
