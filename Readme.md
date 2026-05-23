@@ -1,7 +1,5 @@
 # TUBES_GATOT - Robocode Tank Royale
 
-Repository ini berisi implementasi bot Robocode Tank Royale menggunakan bahasa pemrograman C# (.NET). Bot yang dibuat menerapkan algoritma Greedy dengan strategi yang berbeda pada setiap bot.
-
 ## 1. Penjelasan Singkat Algoritma Greedy
 
 Algoritma Greedy adalah algoritma yang mengambil keputusan terbaik pada kondisi saat ini. Pada Robocode Tank Royale, algoritma greedy digunakan untuk menentukan movement, target, radar, dan strategi menembak agar bot dapat memperoleh skor setinggi mungkin.
