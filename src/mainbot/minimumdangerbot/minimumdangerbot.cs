@@ -5,11 +5,10 @@ using System.Collections.Generic;
 using Robocode.TankRoyale.BotApi;
 using Robocode.TankRoyale.BotApi.Events;
 
-// Targeting: Play It Forward
-// Movement: Anti-Gravity & Stop and Go
+// Strategi: prediksi gerak + anti-gravitasi
 public class MinimumDangerBot : Bot
 {
-    // Knobs
+    // Parameter utama
     private readonly static double  ENEMY_ENERGY_THRESHOLD = 1.3;
     private readonly static double  MOVE_WALL_MARGIN = 25;
     private readonly static double  GUN_FACTOR = 8;
@@ -27,7 +26,7 @@ public class MinimumDangerBot : Bot
     private readonly static int     LAST_LOC_GRAVITY_CONSTANT = 10;
     private readonly static int     CORNER_CONSTANT = 100;
 
-    // Global variables
+    // Status global
     static int targetId;
     static double targetDistance;
     static double enemyDistance;
@@ -86,7 +85,6 @@ public class MinimumDangerBot : Bot
             bullet.X += bullet.Speed * Math.Cos(bullet.Direction);
             bullet.Y += bullet.Speed * Math.Sin(bullet.Direction);
             g.FillRectangle(Brushes.Black, (float)bullet.X, (float)bullet.Y, (float)(3 * bullet.Power), (float)(3 * bullet.Power));
-            // Console.WriteLine("BulletId: " + i + " X: " + bullet.X + " Y: " + bullet.Y);
 
             if (bullet.X < 0 - BULLET_OFFSET_ARENA || bullet.X > ArenaWidth + BULLET_OFFSET_ARENA || 
                 bullet.Y < 0 - BULLET_OFFSET_ARENA || bullet.Y > ArenaHeight + BULLET_OFFSET_ARENA)
@@ -105,7 +103,6 @@ public class MinimumDangerBot : Bot
             bullet.X += bullet.Speed * Math.Cos(bullet.Direction);
             bullet.Y += bullet.Speed * Math.Sin(bullet.Direction);
             g.FillRectangle(myBullets[i].Type == 0 ? Brushes.Black : Brushes.Red, (float)bullet.X, (float)bullet.Y, (float)(3 * bullet.Power), (float)(3 * bullet.Power));
-            // Console.WriteLine("BulletId: " + i + " X: " + bullet.X + " Y: " + bullet.Y);
 
             EnemyData data = enemyData[myBullets[i].Target];
             if (distance(data.LastX, data.LastY, bullet.X, bullet.Y) < 18)
@@ -128,7 +125,7 @@ public class MinimumDangerBot : Bot
         if (hitsag > SAG_LIMIT) dontsag = true;
         if (!dontsag && EnemyCount == 1 && targetDistance > 250) return;
         
-        // Anti-Gravity
+        // Cari posisi aman
         double bestX = X;
         double bestY = Y;
         double minGrav = double.PositiveInfinity;
@@ -172,7 +169,7 @@ public class MinimumDangerBot : Bot
 
     public override void OnScannedBot(ScannedBotEvent e)
     {
-        // Update enemy data
+        // Perbarui data musuh
         if (!enemyData.ContainsKey(e.ScannedBotId))
         {
             enemyData[e.ScannedBotId] = new EnemyData();
@@ -182,7 +179,7 @@ public class MinimumDangerBot : Bot
         data.LastY = e.Y;
         data.IsAlive = true;
 
-        // Lock closest target
+        // Kunci target terdekat
         double scannedDistance = enemyDistance = DistanceTo(e.X, e.Y);
         if (scannedDistance < targetDistance)
         {
@@ -194,14 +191,14 @@ public class MinimumDangerBot : Bot
         }
         targetDistance = scannedDistance;
 
-        // Radar 
+        // Arahkan radar
         double radarAngle = double.PositiveInfinity * NormalizeRelativeAngle(RadarBearingTo(e.X, e.Y));
         if (!double.IsNaN(radarAngle) && (GunHeat < RADAR_LOCK || EnemyCount == 1))
         {
             SetTurnRadarLeft(radarAngle);
         }
 
-        // Fire control
+        // Atur tembakan
         double firePower = Energy / DistanceTo(e.X, e.Y) * GUN_FACTOR;
         if (GunTurnRemaining == 0 && (Energy > MIN_ENERGY || DistanceTo(e.X, e.Y) < 50))
         {
@@ -211,7 +208,7 @@ public class MinimumDangerBot : Bot
         double bulletSpeed = CalcBulletSpeed(firePower);
         double currentDirection = e.Direction * Math.PI / 180.0;
 
-        // Input Virtual Bullets
+        // Simpan peluru virtual
         double energyDrop = data.LastEnergy - e.Energy;
         if (0.11 < energyDrop && energyDrop <= 3)
         {
@@ -230,11 +227,10 @@ public class MinimumDangerBot : Bot
                 SetTurnLeft(Math.Tan(turn) * 180 / Math.PI);
                 SetForward((3 + (int)(energyDrop * 1.999999)) * 8 * Math.Sign(Math.Cos(turn)));
             }
-            // Console.WriteLine("Bullet Speed: " + CalcBulletSpeed(energyDrop) + " Power: " + energyDrop);
         }
         data.LastEnergy = e.Energy;
 
-        // Input State
+        // Simpan riwayat gerak musuh
         double currentSpeed = e.Speed;
         double acceleration = data.HasPrevious ? currentSpeed - data.LastSpeed : 0;
         data.LastSpeed = currentSpeed;
@@ -255,14 +251,14 @@ public class MinimumDangerBot : Bot
         }
         data.HasPrevious = true;
 
-        // Head-on fallback
+        // Fallback jika model belum cukup
         if (data.Type.IndexOf(data.Type.Max()) != 0)
         {
             SetTurnGunLeft(GunBearingTo(e.X, e.Y));
             return;
         }
 
-        // --- Play It Forward ---
+        // Prediksi posisi target
         double predictedX = e.X;
         double predictedY = e.Y;
         double predictedDirection = currentDirection;
@@ -297,7 +293,7 @@ public class MinimumDangerBot : Bot
             time++;
         }
 
-        // Bullet's Wall Avoidance
+        // Batasi hasil prediksi di arena
         predictedX = Math.Max(MOVE_WALL_MARGIN, Math.Min(ArenaWidth - MOVE_WALL_MARGIN, predictedX));
         predictedY = Math.Max(MOVE_WALL_MARGIN, Math.Min(ArenaHeight - MOVE_WALL_MARGIN, predictedY));
 
@@ -305,6 +301,7 @@ public class MinimumDangerBot : Bot
         Pen redPen = new Pen(Brushes.Red);
         g.DrawRectangle(redPen, (float)predictedX, (float)predictedY, 20, 20);
         double bearingFromGun = GunBearingTo(predictedX, predictedY);
+        // Arahkan meriam ke titik prediksi
         SetTurnGunLeft(bearingFromGun);
     }
 
@@ -333,7 +330,7 @@ public class MinimumDangerBot : Bot
         }
     }
 
-    // --- Helper Functions ---
+    // Fungsi bantu
     private double CalcGrav(double candidateX, double candidateY)
     {
         double grav = 0;
@@ -389,7 +386,7 @@ public class MinimumDangerBot : Bot
         
     private void AddLinearVirtualBullet(double x, double y, double speed, double power)
     {
-        // Linear-nya karol
+        // Peluru virtual linear
         double vb = CalcBulletSpeed(power);
         double myDir = Direction * Math.PI / 180;
         double vxt = Speed * Math.Cos(myDir);
@@ -445,9 +442,9 @@ public class MinimumDangerBot : Bot
 
 public struct State
 {
-    public int AngularVelocity; // quantized: radian * 1024
-    public int Speed;           // -8 -- 8
-    public int Acceleration;    // -1 -- 1
+    public int AngularVelocity; // sudut dibulatkan x1024
+    public int Speed;           // kecepatan dibulatkan
+    public int Acceleration;    // percepatan diskret
 
     public State(double angularVelocity, double speed, double acceleration)
     {
